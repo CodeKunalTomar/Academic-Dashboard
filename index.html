@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kunal Tomar - Medicaps University Academic Dashboard</title>
+<meta name="description" content="Interactive academic analytics dashboard - 8 semesters of B.Tech CSE (AI) at Medicaps University visualised with GPA trajectories, credit-weighted domain strengths, and semester drill-downs.">
+<meta property="og:title" content="Kunal Tomar - Academic Dashboard">
+<meta property="og:description" content="8 semesters, 10 charts, one file. GPA trajectory, grade distribution, and domain strength analytics.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#050508;--bg1:#0d0d14;--bg2:#12121c;--bg3:#1a1a28;--bg4:#22223a;
+  --border:rgba(255,255,255,0.07);--border-hi:rgba(255,255,255,0.14);
+  --t1:#f0f0ff;--t2:#9898c0;--t3:#5a5a80;
+  --pur:#7c6fcd;--blu:#5b9cf6;--grn:#34d399;--amb:#fbbf24;--ros:#f87171;--cyn:#22d3ee;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg0);color:var(--t1);font-family:'Plus Jakarta Sans',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");opacity:.025}
+.mesh{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 60% 50% at 15% 20%,rgba(124,111,205,.13) 0%,transparent 60%),
+             radial-gradient(ellipse 50% 40% at 85% 80%,rgba(91,156,246,.10) 0%,transparent 60%),
+             radial-gradient(ellipse 40% 35% at 50% 50%,rgba(52,211,153,.06) 0%,transparent 70%)}
+.shell{position:relative;z-index:1;max-width:1380px;margin:0 auto;padding:48px 24px 80px}
+
+/* Header */
+.header{display:flex;align-items:flex-start;gap:28px;margin-bottom:48px;opacity:0;transform:translateY(24px);animation:fadeUp .9s cubic-bezier(.22,1,.36,1) .1s forwards}
+.avatar-shell{flex-shrink:0;padding:3px;border-radius:50%;background:linear-gradient(135deg,var(--pur),var(--blu),var(--cyn))}
+.avatar-core{width:68px;height:68px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:var(--pur)}
+.eyebrow{display:inline-flex;align-items:center;gap:6px;background:rgba(124,111,205,.12);border:1px solid rgba(124,111,205,.25);border-radius:999px;padding:4px 12px;font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--pur);margin-bottom:10px}
+.eyebrow-dot{width:5px;height:5px;border-radius:50%;background:var(--pur)}
+h1{font-size:clamp(26px,4vw,40px);font-weight:800;letter-spacing:-1.5px;line-height:1.1;background:linear-gradient(135deg,#fff 0%,#a8a8d0 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.subtitle{margin-top:6px;font-size:13px;color:var(--t2)}
+
+/* KPIs */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin-bottom:28px}
+.kpi-card{padding:3px;border-radius:20px;background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.02));opacity:0;transform:translateY(20px);animation:fadeUp .7s cubic-bezier(.22,1,.36,1) var(--delay,.2s) forwards;cursor:default}
+.kpi-inner{background:var(--bg2);border-radius:17px;padding:18px 16px;border:1px solid var(--border);transition:background .4s cubic-bezier(.22,1,.36,1)}
+.kpi-card:hover .kpi-inner{background:var(--bg3)}
+.kpi-label{font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:7px}
+.kpi-value{font-size:26px;font-weight:800;letter-spacing:-1px;line-height:1}
+.kpi-sub{font-size:10.5px;color:var(--t3);margin-top:4px}
+
+/* Bento */
+.bento{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.card{padding:3px;border-radius:24px;background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.01));opacity:0;transform:translateY(20px);animation:fadeUp .8s cubic-bezier(.22,1,.36,1) var(--delay,.3s) forwards}
+.card-inner{background:var(--bg2);border-radius:21px;padding:24px 22px;border:1px solid var(--border);height:100%;transition:background .35s cubic-bezier(.22,1,.36,1),box-shadow .35s;position:relative;overflow:hidden}
+.card:hover .card-inner{background:var(--bg3);box-shadow:0 0 0 1px var(--border-hi),0 20px 60px rgba(0,0,0,.5)}
+.card-inner::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.10),transparent)}
+.card-title{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.ctd{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.span-8{grid-column:span 8}.span-4{grid-column:span 4}.span-6{grid-column:span 6}
+.span-5{grid-column:span 5}.span-7{grid-column:span 7}.span-12{grid-column:span 12}
+
+/* Progress bars */
+.pb-wrap{margin-bottom:14px}
+.pb-label{display:flex;justify-content:space-between;margin-bottom:5px}
+.pb-label span{font-size:11.5px;color:var(--t2)}
+.pb-label span:last-child{font-weight:600;color:var(--t1)}
+.pb-track{height:5px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden}
+.pb-fill{height:100%;border-radius:99px;transform-origin:left;animation:growX 1.2s cubic-bezier(.22,1,.36,1) var(--delay,.5s) both}
+@keyframes growX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* Insight cards */
+.insight-grid{display:flex;flex-direction:column;gap:10px;height:100%}
+.insight-item{flex:1;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:12px 14px;transition:background .3s,border-color .3s}
+.insight-item:hover{background:rgba(255,255,255,.06);border-color:var(--border-hi)}
+.il{font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:3px}
+.iv{font-size:14px;font-weight:700;color:var(--t1)}
+.is{font-size:10.5px;color:var(--t3);margin-top:2px}
+
+/* Semester selector */
+.sem-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;opacity:0;transform:translateY(16px);animation:fadeUp .7s cubic-bezier(.22,1,.36,1) .7s forwards}
+.sem-tab{padding:7px 14px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--border);font-size:11px;font-weight:600;color:var(--t2);cursor:pointer;transition:all .25s cubic-bezier(.22,1,.36,1);user-select:none}
+.sem-tab:hover{background:rgba(255,255,255,.09);color:var(--t1)}
+.sem-tab.active{background:var(--pur);border-color:var(--pur);color:#fff;box-shadow:0 0 18px rgba(124,111,205,.4)}
+
+/* Semester detail drawer */
+.sem-detail{grid-column:span 12;opacity:0;max-height:0;overflow:hidden;transition:opacity .4s cubic-bezier(.22,1,.36,1),max-height .5s cubic-bezier(.22,1,.36,1)}
+.sem-detail.open{opacity:1;max-height:600px}
+.course-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;padding-top:4px}
+.course-card{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;padding:14px 16px;transition:background .25s,border-color .25s}
+.course-card:hover{background:rgba(255,255,255,.07);border-color:var(--border-hi)}
+.cc-name{font-size:12.5px;font-weight:600;color:var(--t1);margin-bottom:8px;line-height:1.3}
+.cc-row{display:flex;justify-content:space-between;align-items:center}
+.cc-meta{font-size:10.5px;color:var(--t3)}
+.grade-pill{display:inline-flex;align-items:center;justify-content:center;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700}
+.gO  {background:rgba(34,211,238,.15);color:var(--cyn)}
+.gAp {background:rgba(124,111,205,.15);color:var(--pur)}
+.gA  {background:rgba(91,156,246,.15);color:var(--blu)}
+.gBp {background:rgba(251,191,36,.15);color:var(--amb)}
+.gB  {background:rgba(248,113,113,.15);color:var(--ros)}
+.gQ  {background:rgba(255,255,255,.08);color:var(--t3)}
+
+/* Footer */
+.footer{margin-top:56px;text-align:center;font-size:11.5px;color:var(--t3)}
+
+@keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:900px){
+  .span-8,.span-7,.span-5{grid-column:span 12}
+  .span-4,.span-6{grid-column:span 12}
+}
+@media(max-width:560px){
+  .kpi-row{grid-template-columns:repeat(2,1fr)}
+  .shell{padding:28px 14px 56px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;transition-duration:.01ms !important}
+  html{scroll-behavior:auto}
+}
+.footer a{color:var(--t2);text-decoration:none;border-bottom:1px solid var(--border-hi);transition:color .25s}
+.footer a:hover{color:var(--t1)}
+</style>
+</head>
+<body>
+<div class="mesh"></div>
+<div class="shell">
+
+<!-- HEADER -->
+<header class="header">
+  <div class="avatar-shell"><div class="avatar-core">KT</div></div>
+  <div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span>B.Tech CS and Engg (Specialization in AI) - 2022 to 2026</div>
+    <h1>Kunal Tomar</h1>
+    <p class="subtitle">Medicaps University, Indore &nbsp;·&nbsp; First Division with Honours</p>
+  </div>
+</header>
+
+<!-- KPIs -->
+<div class="kpi-row">
+  <div class="kpi-card" style="--delay:.15s"><div class="kpi-inner">
+    <div class="kpi-label">Final CGPA</div>
+    <div class="kpi-value" style="color:var(--pur)" data-target="8.89" data-dec="2">0</div>
+    <div class="kpi-sub">88.9% equivalent</div>
+  </div></div>
+  <div class="kpi-card" style="--delay:.22s"><div class="kpi-inner">
+    <div class="kpi-label">Best SGPA</div>
+    <div class="kpi-value" style="color:var(--grn)" data-target="10.00" data-dec="2">0</div>
+    <div class="kpi-sub">Sem 8 - Project-II</div>
+  </div></div>
+  <div class="kpi-card" style="--delay:.29s"><div class="kpi-inner">
+    <div class="kpi-label">Total Credits</div>
+    <div class="kpi-value" style="color:var(--blu)" data-target="173" data-dec="0">0</div>
+    <div class="kpi-sub">All 8 semesters</div>
+  </div></div>
+  <div class="kpi-card" style="--delay:.36s"><div class="kpi-inner">
+    <div class="kpi-label">Outstanding (O)</div>
+    <div class="kpi-value" style="color:var(--cyn)" data-target="23" data-dec="0">0</div>
+    <div class="kpi-sub">Courses graded O</div>
+  </div></div>
+  <div class="kpi-card" style="--delay:.43s"><div class="kpi-inner">
+    <div class="kpi-label">CGPA Gain</div>
+    <div class="kpi-value" style="color:var(--amb)">+0.49</div>
+    <div class="kpi-sub">8.40 to 8.89</div>
+  </div></div>
+  <div class="kpi-card" style="--delay:.50s"><div class="kpi-inner">
+    <div class="kpi-label">Only B Grade</div>
+    <div class="kpi-value" style="color:var(--ros)" data-target="1" data-dec="0">0</div>
+    <div class="kpi-sub">NLP - Sem 7</div>
+  </div></div>
+</div>
+
+<!-- SEMESTER SELECTOR -->
+<div class="sem-tabs" id="semTabs">
+  <span class="sem-tab" data-sem="0">Sem 1</span>
+  <span class="sem-tab" data-sem="1">Sem 2</span>
+  <span class="sem-tab" data-sem="2">Sem 3</span>
+  <span class="sem-tab" data-sem="3">Sem 4</span>
+  <span class="sem-tab" data-sem="4">Sem 5</span>
+  <span class="sem-tab" data-sem="5">Sem 6</span>
+  <span class="sem-tab" data-sem="6">Sem 7</span>
+  <span class="sem-tab" data-sem="7">Sem 8</span>
+  <span style="font-size:10px;color:var(--t3);align-self:center;margin-left:4px">click to expand semester courses</span>
+</div>
+
+<!-- BENTO GRID -->
+<div class="bento">
+
+  <!-- Semester detail drawer -->
+  <div class="sem-detail" id="semDetail">
+    <div class="card" style="--delay:0s;opacity:1;transform:none">
+      <div class="card-inner">
+        <div class="card-title"><span class="ctd" style="background:var(--pur)"></span><span id="semDetailTitle">Semester Courses</span></div>
+        <div class="course-grid" id="courseGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. GPA Trajectory -->
+  <div class="card span-8" style="--delay:.25s">
+    <div class="card-inner">
+      <div class="card-title"><span class="ctd" style="background:var(--pur)"></span>GPA Trajectory - SGPA and CGPA</div>
+      <div id="ct" style="height:272px"></div>
+    </div>
+  </div>
+
+  <!-- 2. Grade Distribution -->
+  <div class="card span-4" style="--delay:.32s">
+    <div class="card-inner">
+      <div class="card-title"><span class="ctd" style="background:var(--grn)"></span>Grade Distribution</div>
+      <div id="cg" style="height:272px"></div>
+    </div>
+  </div>
+
+  <!-- 3. Theory vs Practical -->
+  <div class="card span-6" style="--delay:.38s">
+    <div class="card-inner">
+      <div class="card-title"><span class="ctd" style="background:var(--blu)"></span>Theory vs Practical - Credit-Weighted Avg GP</div>
+      <div id="ctp" style="height:236px"></div>
+    </div>
+  </div>
+
+  <!-- 4. SGPA Delta -->
+  <div class="card span-6" style="--delay:.44s">
+    <div class="card-inner">
+      <div class="card-title"><span class="ctd" style="background:var(--amb)"></span>SGPA Delta vs Sem 1 Baseline (8.40)</div>
+      <div id="cd" style="height:236px"></div>
+    </div>
+  </div>
+
+  <!-- 5. Combined subject heatmap -->
+  <div class="card span-8" style="--delay:.50s">
+    <div class="card-inner">
+      <div class="card-title"><span class="ctd" style="background:var(--cyn)"></span>Subject Grade Points - P+T Combined (weighted by credits)</div>
+      <div id="ch" style="height:320px"></div>
+    </div>
+  </div>
+
+  <!-- 6. Key Insights -->
+  <div class="card span-4" style="--delay:.56s">
+    <div class="card-inner" style="display:flex;flex-direction:column">
+      <div class="card-title"><span class="ctd" style="background:var(--ros)"></span>Key Patterns</div>
+      <div class="insight-grid">
+        <div class="insight-item">
+          <div class="il">Practicals vs Theory</div>
+          <div class="iv" style="color:var(--grn)">Always Higher</div>
+          <div class="is">Every semester: practical avg GP is above theory avg GP</div>
+        </div>
+        <div class="insight-item">
+          <div class="il">AI / ML Streak</div>
+          <div class="iv" style="color:var(--pur)">AI - ML - DAA - Expert Sys</div>
+          <div class="is">All O or A+ - clear domain strength</div>
+        </div>
+        <div class="insight-item">
+          <div class="il">Weak Spot</div>
+          <div class="iv" style="color:var(--ros)">Non-CS Theory</div>
+          <div class="is">Maths-II (B+) - Dig Elec (B+) - Mgmt (B+)</div>
+        </div>
+        <div class="insight-item">
+          <div class="il">Projects Record</div>
+          <div class="iv" style="color:var(--cyn)">All Outstanding (O)</div>
+          <div class="is">Mini Proj - Ind. Training A+ - Proj-I - Proj-II</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Credits per semester -->
+  <div class="card span-5" style="--delay:.60s">
+    <div class="card-inner">
+      <div class="card-title"><span class="ctd" style="background:var(--blu)"></span>Credits Earned per Semester</div>
+      <div id="cc" style="height:220px"></div>
+    </div>
+  </div>
+
+  <!-- 8. Domain performance bars -->
+  <div class="card span-7" style="--delay:.66s">
+    <div class="card-inner">
+      <div class="card-title"><span class="ctd" style="background:var(--amb)"></span>Domain Performance (credit-weighted avg GP)</div>
+      <div style="padding-top:2px">
+        <div class="pb-wrap"><div class="pb-label"><span>AI / ML / Expert Systems</span><span>9.5</span></div>
+          <div class="pb-track"><div class="pb-fill" style="width:95%;background:linear-gradient(90deg,var(--pur),var(--cyn));--delay:.7s"></div></div></div>
+        <div class="pb-wrap"><div class="pb-label"><span>Programming (all languages)</span><span>9.5</span></div>
+          <div class="pb-track"><div class="pb-fill" style="width:95%;background:linear-gradient(90deg,var(--blu),var(--pur));--delay:.78s"></div></div></div>
+        <div class="pb-wrap"><div class="pb-label"><span>Project Work</span><span>9.75</span></div>
+          <div class="pb-track"><div class="pb-fill" style="width:97.5%;background:linear-gradient(90deg,var(--cyn),var(--grn));--delay:.86s"></div></div></div>
+        <div class="pb-wrap"><div class="pb-label"><span>Core CS (OS - DB - Networks)</span><span>9.0</span></div>
+          <div class="pb-track"><div class="pb-fill" style="width:90%;background:linear-gradient(90deg,var(--grn),var(--cyn));--delay:.94s"></div></div></div>
+        <div class="pb-wrap"><div class="pb-label"><span>Algorithms and Theory</span><span>8.8</span></div>
+          <div class="pb-track"><div class="pb-fill" style="width:88%;background:linear-gradient(90deg,var(--grn),var(--blu));--delay:1.02s"></div></div></div>
+        <div class="pb-wrap"><div class="pb-label"><span>Engineering Foundations</span><span>8.3</span></div>
+          <div class="pb-track"><div class="pb-fill" style="width:83%;background:linear-gradient(90deg,var(--amb),var(--grn));--delay:1.1s"></div></div></div>
+        <div class="pb-wrap" style="margin-bottom:0"><div class="pb-label"><span>Non-CS Theory (Maths - Mgmt - Elec)</span><span>7.4</span></div>
+          <div class="pb-track"><div class="pb-fill" style="width:74%;background:linear-gradient(90deg,var(--ros),var(--amb));--delay:1.18s"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. Radar chart -->
+  <div class="card span-6" style="--delay:.70s">
+    <div class="card-inner">
+      <div class="card-title"><span class="ctd" style="background:var(--pur)"></span>Domain Strength Radar</div>
+      <div id="cr" style="height:280px"></div>
+    </div>
+  </div>
+
+  <!-- 10. Bubble chart -->
+  <div class="card span-6" style="--delay:.76s">
+    <div class="card-inner">
+      <div class="card-title"><span class="ctd" style="background:var(--grn)"></span>SGPA vs Credits Load (bubble size = CGPA)</div>
+      <div id="cb" style="height:280px"></div>
+    </div>
+  </div>
+
+</div><!-- /bento -->
+
+<div class="footer">Medicaps University, Indore - B.Tech. CS and Engg (Specialization in AI) - 2022 to 2026<br><span style="display:inline-block;margin-top:8px">built by Kunal Tomar · <a href="https://kunaltomar.vercel.app" target="_blank" rel="noreferrer">portfolio</a></span></div>
+</div><!-- /shell -->
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────────
+const SL   = ['Sem 1','Sem 2','Sem 3','Sem 4','Sem 5','Sem 6','Sem 7','Sem 8'];
+const SGPA = [8.40, 8.55, 8.79, 8.74, 9.00, 9.38, 8.67, 10.00];
+const CGPA = [8.40, 8.48, 8.59, 8.63, 8.71, 8.81, 8.80, 8.89];
+const CRED = [22,   22,   26,   25,   25,   25,   16,   12  ];
+
+// Credit-weighted theory avg GP (Sem 8 has no theory courses -> null)
+const THEORY = [8.07, 8.33, 8.55, 8.44, 8.84, 9.19, 8.00, null];
+// Credit-weighted practical avg GP (all 8 sems)
+const PRAC   = [9.17, 9.00, 10.0, 9.80, 9.75, 10.0, 9.67, 10.0];
+
+// Combined (P+T weighted) subject data: [semIndex, combinedGP, label]
+const SUBJ = [
+  [0,8.00,'Maths-I'],[0,9.00,'Physics'],[0,8.00,'Civil Eng'],
+  [0,8.25,'Elec Eng'],[0,7.67,'Graphics'],[0,10.0,'Prog-I'],
+  [1,7.00,'Maths-II'],[1,9.33,'Chemistry'],[1,8.25,'Electronics'],
+  [1,8.00,'Mech Eng'],[1,8.00,'Workshop'],[1,10.0,'Prog-II'],
+  [1,10.0,'History'],[1,8.67,'Comm Skills'],
+  [2,8.00,'Discrete Maths'],[2,9.00,'Data Comm'],[2,9.25,'OOP'],
+  [2,9.25,'Data Structs'],[2,9.33,'Java'],[2,7.75,'Dig Elec'],
+  [2,9.00,'CS Arch'],
+  [3,8.50,'Microproc'],[3,8.25,'OS'],[3,9.33,'Adv Java'],
+  [3,8.00,'Theory Comp'],[3,9.25,'DBMS'],[3,9.25,'Stat Analysis'],
+  [4,9.25,'Soft Eng'],[4,9.00,'Networks'],[4,10.0,'Art Intel'],
+  [4,9.25,'Expert Sys'],[4,7.00,'Management'],[4,9.00,'Python'],
+  [5,10.0,'DAA'],[5,9.20,'Compiler'],[5,9.25,'Mach Learn'],
+  [5,9.00,'Research'],[5,10.0,'Mini Proj'],[5,9.00,'Cyber Sec'],
+  [6,6.00,'NLP'],[6,9.00,'Swarm Intel'],[6,9.00,'Ind Training'],
+  [6,10.0,'Project-I'],[6,9.00,'Data Analytics'],
+  [7,10.0,'Project-II'],
+];
+
+// Per-semester course details for the expandable drawer
+const COURSES = {
+  0:[
+    {n:'Eng. Mathematics-I',   t:'Theory',    cr:3,  gr:'A',    gp:8},
+    {n:'Eng. Physics',         t:'P + T',     cr:4,  gr:'A+',   gp:9},
+    {n:'Basic Civil Eng.',     t:'P + T',     cr:4,  gr:'A',    gp:8},
+    {n:'Basic Elec. Eng.',     t:'P + T',     cr:4,  gr:'A / A+',gp:8.25},
+    {n:'Eng. Graphics',        t:'P + T',     cr:3,  gr:'A+ / B+',gp:7.67},
+    {n:'Programming-I',        t:'Practical', cr:2,  gr:'O',    gp:10},
+  ],
+  1:[
+    {n:'Eng. Mathematics-II',  t:'Theory',    cr:3,  gr:'B+',   gp:7},
+    {n:'Eng. Chemistry',       t:'P + T',     cr:3,  gr:'O / A+',gp:9.33},
+    {n:'Basic Electronics',    t:'P + T',     cr:4,  gr:'A+ / A',gp:8.25},
+    {n:'Basic Mech. Eng.',     t:'P + T',     cr:4,  gr:'A',    gp:8},
+    {n:'Eng. Workshop-I',      t:'Practical', cr:1,  gr:'A',    gp:8},
+    {n:'Programming-II',       t:'Practical', cr:2,  gr:'O',    gp:10},
+    {n:'History of Sci & Tech',t:'Theory',    cr:2,  gr:'O',    gp:10},
+    {n:'Communication Skills', t:'P + T',     cr:3,  gr:'A / A+',gp:8.67},
+  ],
+  2:[
+    {n:'Discrete Mathematics', t:'Theory',    cr:3,  gr:'A',    gp:8},
+    {n:'Data Communication',   t:'Theory',    cr:3,  gr:'A+',   gp:9},
+    {n:'OOP',                  t:'P + T',     cr:4,  gr:'O / A+',gp:9.25},
+    {n:'Data Structures',      t:'P + T',     cr:4,  gr:'O / A+',gp:9.25},
+    {n:'Java Programming',     t:'P + T',     cr:3,  gr:'O / A+',gp:9.33},
+    {n:'Digital Electronics',  t:'P + T',     cr:4,  gr:'O / B+',gp:7.75},
+    {n:'CS Architecture',      t:'Theory',    cr:3,  gr:'A+',   gp:9},
+  ],
+  3:[
+    {n:'Microprocessor',       t:'P + T',     cr:4,  gr:'O / A',gp:8.5},
+    {n:'Operating Systems',    t:'P + T',     cr:4,  gr:'A+ / A',gp:8.25},
+    {n:'Advanced Java',        t:'P + T',     cr:3,  gr:'O / A+',gp:9.33},
+    {n:'Theory of Computation',t:'Theory',    cr:4,  gr:'A',    gp:8},
+    {n:'DBMS',                 t:'P + T',     cr:4,  gr:'O / A+',gp:9.25},
+    {n:'Statistical Analysis', t:'P + T',     cr:4,  gr:'O / A+',gp:9.25},
+  ],
+  4:[
+    {n:'Software Engineering', t:'P + T',     cr:4,  gr:'O / A+',gp:9.25},
+    {n:'Computer Networks',    t:'P + T',     cr:5,  gr:'A+',   gp:9},
+    {n:'Artificial Intel.',    t:'P + T',     cr:4,  gr:'O',    gp:10},
+    {n:'Expert Systems',       t:'P + T',     cr:4,  gr:'O / A+',gp:9.25},
+    {n:'Management & Econ.',   t:'Theory',    cr:3,  gr:'B+',   gp:7},
+    {n:'Python Essentials',    t:'Theory',    cr:3,  gr:'A+',   gp:9},
+  ],
+  5:[
+    {n:'DAA',                  t:'P + T',     cr:4,  gr:'O',    gp:10},
+    {n:'Compiler Design',      t:'P + T',     cr:5,  gr:'O / A+',gp:9.2},
+    {n:'Machine Learning',     t:'P + T',     cr:4,  gr:'O / A+',gp:9.25},
+    {n:'Research Methodology', t:'Theory',    cr:3,  gr:'A+',   gp:9},
+    {n:'Mini Project-I',       t:'Practical', cr:2,  gr:'O',    gp:10},
+    {n:'Cyber Security',       t:'Theory',    cr:3,  gr:'A+',   gp:9},
+  ],
+  6:[
+    {n:'Natural Language Processing',t:'Theory',cr:3,gr:'B',   gp:6},
+    {n:'Swarm Intelligence',   t:'Theory',    cr:3,  gr:'A+',   gp:9},
+    {n:'Industrial Training',  t:'Practical', cr:2,  gr:'A+',   gp:9},
+    {n:'Project-I',            t:'Practical', cr:4,  gr:'O',    gp:10},
+    {n:'Exploratory Data Analytics',t:'Theory',cr:3, gr:'A+',  gp:9},
+  ],
+  7:[
+    {n:'Project-II',           t:'Practical', cr:12, gr:'O',    gp:10},
+  ],
+};
+
+// ── PLOTLY BASE ───────────────────────────────────────────────────────────────
+// margin.t:32 gives sufficient room for textposition:'outside' bar labels
+const B = {
+  paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+  font:{family:"'Plus Jakarta Sans',system-ui,sans-serif",color:'#9898c0',size:11},
+  margin:{t:32, b:40, l:42, r:14},
+  xaxis:{gridcolor:'rgba(255,255,255,0.05)',tickcolor:'rgba(255,255,255,0.15)',
+         linecolor:'rgba(255,255,255,0.08)',zeroline:false,automargin:true},
+  yaxis:{gridcolor:'rgba(255,255,255,0.05)',tickcolor:'rgba(255,255,255,0.15)',
+         linecolor:'rgba(255,255,255,0.08)',zeroline:false,automargin:true},
+  legend:{bgcolor:'rgba(0,0,0,0)',borderwidth:0,font:{size:11}},
+  hoverlabel:{bgcolor:'#1a1a28',bordercolor:'rgba(255,255,255,0.12)',
+              font:{family:"'Plus Jakarta Sans'",size:12,color:'#f0f0ff'}},
+};
+const C = {displayModeBar:false,responsive:true};
+
+// ── 1. GPA TRAJECTORY ────────────────────────────────────────────────────────
+Plotly.newPlot('ct',[
+  {x:SL,y:SGPA,name:'SGPA',type:'scatter',mode:'lines+markers',
+   line:{color:'#7c6fcd',width:2.5,shape:'spline'},
+   marker:{size:8,color:'#7c6fcd',line:{color:'#1a1a28',width:2}},
+   fill:'tozeroy',fillcolor:'rgba(124,111,205,0.07)',
+   hovertemplate:'<b>%{x}</b><br>SGPA: <b>%{y}</b><extra></extra>'},
+  {x:SL,y:CGPA,name:'CGPA',type:'scatter',mode:'lines+markers',
+   line:{color:'#34d399',width:2,dash:'dot',shape:'spline'},
+   marker:{size:7,color:'#34d399',symbol:'diamond',line:{color:'#1a1a28',width:2}},
+   hovertemplate:'<b>%{x}</b><br>CGPA: <b>%{y}</b><extra></extra>'},
+],{...B,
+  yaxis:{...B.yaxis, range:[8.1,10.6]},
+  // annotation placed inside the visible range
+  annotations:[{
+    text:'First Division with Honours: CGPA >= 7.5',
+    x:0, xref:'paper', xanchor:'left',
+    y:10.52, yref:'y',
+    showarrow:false,
+    font:{size:9,color:'rgba(52,211,153,0.6)'},
+  }],
+},C);
+
+// ── 2. GRADE DISTRIBUTION ────────────────────────────────────────────────────
+// range headroom: max bar=28, range top=36 => text at ~29 is well within [0,36]
+Plotly.newPlot('cg',[{
+  x:['O','A+','A','B+','B'],y:[23,28,13,4,1],type:'bar',
+  marker:{color:['#22d3ee','#7c6fcd','#5b9cf6','#fbbf24','#f87171']},
+  text:[23,28,13,4,1],textposition:'outside',
+  textfont:{color:'#f0f0ff',size:11},
+  hovertemplate:'<b>%{x}</b>: %{y} courses<extra></extra>',
+  cliponaxis:false,
+}],{...B,
+  margin:{t:32,b:28,l:24,r:14},
+  yaxis:{...B.yaxis,range:[0,36]},
+  bargap:.35,
+},C);
+
+// ── 3. THEORY vs PRACTICAL (all 8 sems, Sem 8 has no theory) ─────────────────
+const tSL = SL.filter((_,i)=>THEORY[i]!==null);  // Sem 1-7 only for theory
+const tGP = THEORY.filter(v=>v!==null);
+Plotly.newPlot('ctp',[
+  {x:tSL,y:tGP,name:'Theory',type:'bar',
+   marker:{color:'rgba(91,156,246,0.75)'},
+   hovertemplate:'<b>%{x}</b><br>Theory avg GP: %{y:.2f}<extra></extra>'},
+  {x:SL,y:PRAC,name:'Practical',type:'bar',
+   marker:{color:'rgba(52,211,153,0.75)'},
+   hovertemplate:'<b>%{x}</b><br>Practical avg GP: %{y:.2f}<extra></extra>'},
+],{...B,
+  barmode:'group',
+  yaxis:{...B.yaxis,range:[6.0,11.2]},
+  margin:{t:32,b:36,l:42,r:14},
+  bargap:.25,bargroupgap:.1,
+  // note explaining Sem 8 theory absence
+  annotations:[{
+    text:'Sem 8: practical only = Project-II (no theory courses)',
+    x:1,xref:'paper',xanchor:'right',y:11.1,yref:'y',
+    showarrow:false,font:{size:8.5,color:'rgba(255,255,255,0.3)'},
+  }],
+},C);
+
+// ── 4. SGPA DELTA ─────────────────────────────────────────────────────────────
+// max delta = +1.60 (Sem 8); range top = 2.4 gives 0.8 headroom for text
+const delta = SGPA.map(s=>+(s-8.40).toFixed(2));
+Plotly.newPlot('cd',[{
+  x:SL,y:delta,type:'bar',
+  marker:{color:delta.map(d=>d>=0?'rgba(52,211,153,0.8)':'rgba(248,113,113,0.8)')},
+  text:delta.map(d=>d>=0?`+${d.toFixed(2)}`:`${d.toFixed(2)}`),
+  textposition:'outside',textfont:{color:'#f0f0ff',size:10},
+  hovertemplate:'<b>%{x}</b><br>Delta from 8.40: %{y:.2f}<extra></extra>',
+  cliponaxis:false,
+}],{...B,
+  yaxis:{...B.yaxis,range:[-0.8,2.4]},
+  margin:{t:32,b:36,l:42,r:14},
+  shapes:[{type:'line',x0:-0.5,x1:7.5,xref:'x',y0:0,y1:0,
+           line:{color:'rgba(255,255,255,0.15)',width:1}}],
+},C);
+
+// ── 5. COMBINED SUBJECT HEATMAP ───────────────────────────────────────────────
+const sNames = SUBJ.map(s=>s[2]);
+const heatZ  = Array.from({length:8},(_,r)=>SUBJ.map(s=>s[0]===r?s[1]:null));
+Plotly.newPlot('ch',[{
+  z:heatZ, x:sNames,
+  y:['S1','S2','S3','S4','S5','S6','S7','S8'],
+  type:'heatmap',
+  colorscale:[[0,'#f87171'],[0.2,'#fbbf24'],[0.5,'#5b9cf6'],[0.75,'#7c6fcd'],[1,'#22d3ee']],
+  zmin:6,zmax:10,hoverongaps:false,
+  hovertemplate:'<b>%{x}</b><br>Sem %{y}<br>Combined GP: <b>%{z:.2f}</b><extra></extra>',
+  colorbar:{tickfont:{color:'#9898c0',size:10},outlinecolor:'rgba(255,255,255,0.08)',
+            thickness:12,len:.85,x:1.02},
+}],{...B,
+  // automargin on xaxis handles the 45 rotated labels automatically
+  margin:{t:8,b:20,l:28,r:72},
+  xaxis:{...B.xaxis,tickangle:-45,tickfont:{size:8},automargin:true},
+  yaxis:{...B.yaxis,tickfont:{size:10}},
+},C);
+
+// ── 6. CREDITS BAR ────────────────────────────────────────────────────────────
+// verified: [22,22,26,25,25,25,16,12] from grade sheets
+// range top = 34 gives headroom for text above max bar (26)
+Plotly.newPlot('cc',[{
+  x:SL,y:CRED,type:'bar',
+  marker:{color:CRED.map(c=>`rgba(124,111,205,${(0.38+(c/26)*0.62).toFixed(2)})`)},
+  text:CRED,textposition:'outside',textfont:{color:'#f0f0ff',size:11},
+  hovertemplate:'<b>%{x}</b><br>Credits earned: %{y}<extra></extra>',
+  cliponaxis:false,
+}],{...B,
+  yaxis:{...B.yaxis,range:[0,34]},
+  margin:{t:32,b:36,l:34,r:14},
+  bargap:.35,
+},C);
+
+// ── 7. RADAR - DOMAIN STRENGTHS ───────────────────────────────────────────────
+const rD = ['AI and ML','Programming','Project Work','Core CS','Algorithms','Eng. Foundations','Non-CS Theory'];
+const rV = [9.5,9.5,9.75,9.0,8.8,8.3,7.4];
+Plotly.newPlot('cr',[{
+  type:'scatterpolar',
+  r:[...rV,rV[0]],theta:[...rD,rD[0]],
+  fill:'toself',fillcolor:'rgba(124,111,205,0.12)',
+  line:{color:'#7c6fcd',width:2},
+  marker:{size:6,color:'#7c6fcd'},
+  hovertemplate:'<b>%{theta}</b><br>Avg GP: %{r:.2f}<extra></extra>',
+}],{
+  paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',
+  margin:{t:16,b:16,l:32,r:32},
+  polar:{
+    bgcolor:'rgba(0,0,0,0)',
+    radialaxis:{visible:true,range:[6,10],
+                gridcolor:'rgba(255,255,255,0.08)',
+                tickcolor:'rgba(255,255,255,0.15)',
+                tickfont:{size:9,color:'#5a5a80'},
+                linecolor:'rgba(255,255,255,0.08)'},
+    angularaxis:{gridcolor:'rgba(255,255,255,0.06)',
+                 linecolor:'rgba(255,255,255,0.08)',
+                 tickfont:{size:10,color:'#9898c0'}},
+  },
+  font:{family:"'Plus Jakarta Sans',system-ui,sans-serif",color:'#9898c0',size:11},
+  showlegend:false,
+  hoverlabel:{bgcolor:'#1a1a28',bordercolor:'rgba(255,255,255,0.12)',
+              font:{family:"'Plus Jakarta Sans'",size:12,color:'#f0f0ff'}},
+},C);
+
+// ── 8. BUBBLE CHART - SGPA vs Credits ────────────────────────────────────────
+// Per-point textposition to avoid overlap (Sem 1+2 share x=22, Sem 4+5+6 share x=25)
+// Labels shortened to 'S1'-'S8' to reduce footprint
+// textposition array carefully chosen:
+//   S1 (22,8.40): 'bottom center'  S2 (22,8.55): 'top center'
+//   S3 (26,8.79): 'top center'
+//   S4 (25,8.74): 'bottom left'    S5 (25,9.00): 'middle left'   S6 (25,9.38): 'top left'
+//   S7 (16,8.67): 'top center'     S8 (12,10.00): 'bottom right'
+const bLabels    = SL.map(s=>s.replace('Sem ','S'));
+const bPositions = ['bottom center','top center','top center',
+                    'bottom left','middle left','top left',
+                    'top center','bottom right'];
+const bColors    = ['#7c6fcd','#5b9cf6','#34d399','#22d3ee','#fbbf24','#f87171','#a78bfa','#34d399'];
+Plotly.newPlot('cb',[{
+  x:CRED, y:SGPA, mode:'markers+text',
+  marker:{
+    size:CGPA.map(c=>+(c-7.5)*26),
+    color:bColors,
+    line:{color:'rgba(255,255,255,0.15)',width:1.5},
+    opacity:0.85,
+  },
+  text:bLabels,
+  textposition:bPositions,
+  textfont:{size:9,color:'#9898c0'},
+  hovertemplate:'<b>%{text}</b><br>Credits: %{x}<br>SGPA: %{y}<br>CGPA: %{customdata:.2f}<extra></extra>',
+  customdata:CGPA,
+  type:'scatter',
+}],{...B,
+  xaxis:{...B.xaxis,title:{text:'Credits Earned',font:{size:10}},range:[6,31],automargin:true},
+  yaxis:{...B.yaxis,title:{text:'SGPA',font:{size:10}},range:[8.1,10.6],automargin:true},
+  margin:{t:16,b:52,l:52,r:14},
+},C);
+
+// ── ANIMATED COUNTERS ─────────────────────────────────────────────────────────
+document.querySelectorAll('[data-target]').forEach(el=>{
+  const target = parseFloat(el.dataset.target);
+  const dec    = parseInt(el.dataset.dec || '0');
+  const dur = 1400, step = 16;
+  let elapsed = 0;
+  const timer = setInterval(()=>{
+    elapsed += step;
+    const cur = target * (1 - Math.pow(1 - elapsed/dur, 3));
+    if(elapsed >= dur){ el.textContent = target.toFixed(dec); clearInterval(timer); return; }
+    el.textContent = cur.toFixed(dec);
+  }, step);
+});
+
+// ── SEMESTER DETAIL DRAWER ────────────────────────────────────────────────────
+function gradeClass(g){
+  if(g.startsWith('O'))return'gO';
+  if(g.includes('A+'))return'gAp';
+  if(/^A\b/.test(g))return'gA';
+  if(g.includes('B+'))return'gBp';
+  if(/^B\b/.test(g))return'gB';
+  return'gQ';
+}
+let activeSem = -1;
+document.querySelectorAll('.sem-tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    const si = parseInt(tab.dataset.sem);
+    const detail = document.getElementById('semDetail');
+    if(activeSem === si){
+      detail.classList.remove('open');
+      tab.classList.remove('active');
+      activeSem = -1; return;
+    }
+    document.querySelectorAll('.sem-tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    activeSem = si;
+    document.getElementById('semDetailTitle').textContent =
+      `${SL[si]} - SGPA ${SGPA[si]} - CGPA ${CGPA[si]} - ${CRED[si]} Credits`;
+    document.getElementById('courseGrid').innerHTML =
+      COURSES[si].map(c=>`
+        <div class="course-card">
+          <div class="cc-name">${c.n}</div>
+          <div class="cc-row">
+            <span class="cc-meta">${c.t} - ${c.cr} cr</span>
+            <span class="grade-pill ${gradeClass(c.gr)}">${c.gr} / ${c.gp%1===0?c.gp+'.0':c.gp}</span>
+          </div>
+        </div>`).join('');
+    detail.classList.add('open');
+    setTimeout(()=>detail.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+  });
+});
+</script>
+</body>
+</html>
